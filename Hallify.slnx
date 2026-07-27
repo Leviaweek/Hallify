@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HallifyApi\HallifyApi.csproj" />
+  <Project Path="HallifyDatabase/HallifyDatabase.csproj" />
+</Solution>
