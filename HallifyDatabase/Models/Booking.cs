@@ -19,6 +19,7 @@ public class Booking
     public DateTimeOffset EndAt { get; set; }
     
     public decimal TotalPrice { get; set; }
+    public bool IsDeleted { get; set; }
     public List<BookingService> BookingServices { get; set; } = [];
 }
 

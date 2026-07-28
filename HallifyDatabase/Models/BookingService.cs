@@ -17,6 +17,7 @@ public class BookingService
     public HallService HallService { get; set; } = null!;
     public Booking Booking { get; set; } = null!;
     public decimal PriceAtBooking { get; set; }
+    public bool IsDeleted { get; set; }
 }
 
 file sealed class BookingServiceConfigure: IEntityTypeConfiguration<BookingService>
