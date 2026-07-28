@@ -19,6 +19,7 @@ public class Booking
     public DateTimeOffset EndAt { get; set; }
     
     public decimal TotalPrice { get; set; }
+    public bool IsDeleted { get; set; }
     public List<BookingService> BookingServices { get; set; } = [];
 }
 
@@ -34,7 +35,8 @@ file sealed class BookingConfigure: IEntityTypeConfiguration<Booking>
         
         builder.HasOne(bs => bs.Hall)
             .WithMany()
-            .HasForeignKey(bs => bs.HallId);
+            .HasForeignKey(bs => bs.HallId)
+            .OnDelete(DeleteBehavior.NoAction);
         
         builder.Property(x => x.StartAt).IsRequired();
         builder.Property(x => x.EndAt).IsRequired();

@@ -3,6 +3,7 @@ using System;
 using HallifyDatabase;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HallifyDatabase.Migrations
 {
     [DbContext(typeof(HallDbContext))]
-    partial class HallDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260728093615_AddHallServicesRelation")]
+    partial class AddHallServicesRelation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,9 +36,6 @@ namespace HallifyDatabase.Migrations
 
                     b.Property<Guid>("HallId")
                         .HasColumnType("uuid");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("StartAt")
                         .HasColumnType("timestamp with time zone");
@@ -62,9 +62,6 @@ namespace HallifyDatabase.Migrations
                     b.Property<Guid>("HallServiceId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<decimal>("PriceAtBooking")
                         .HasColumnType("numeric");
 
@@ -89,9 +86,6 @@ namespace HallifyDatabase.Migrations
                     b.Property<decimal>("HourlyRate")
                         .HasColumnType("numeric");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -110,9 +104,6 @@ namespace HallifyDatabase.Migrations
 
                     b.Property<Guid>("HallId")
                         .HasColumnType("uuid");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()

@@ -17,6 +17,7 @@ public class BookingService
     public HallService HallService { get; set; } = null!;
     public Booking Booking { get; set; } = null!;
     public decimal PriceAtBooking { get; set; }
+    public bool IsDeleted { get; set; }
 }
 
 file sealed class BookingServiceConfigure: IEntityTypeConfiguration<BookingService>
@@ -27,7 +28,8 @@ file sealed class BookingServiceConfigure: IEntityTypeConfiguration<BookingServi
 
         builder.HasOne(x => x.HallService)
             .WithMany()
-            .HasForeignKey(bs => bs.HallServiceId);
+            .HasForeignKey(bs => bs.HallServiceId)
+            .OnDelete(DeleteBehavior.NoAction);
         
         builder.HasOne(x => x.Booking)
             .WithMany(x => x.BookingServices)

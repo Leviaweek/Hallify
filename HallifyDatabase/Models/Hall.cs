@@ -10,11 +10,14 @@ namespace HallifyDatabase.Models;
 public class Hall
 {
     [Key] public Guid Id { get; set; }
-    public required string Name { get; set; }
+    [MaxLength(50)]public required string Name { get; set; }
     
     public int Capacity { get; set; }
     
     public decimal HourlyRate { get; set; }
+    
+    public List<HallService> HallServices { get; set; } = [];
+    public bool IsDeleted { get; set; }
 }
 
 file sealed class HallConfigure: IEntityTypeConfiguration<Hall>
@@ -27,7 +30,7 @@ file sealed class HallConfigure: IEntityTypeConfiguration<Hall>
             .IsRequired()
             .HasMaxLength(50);
         
-        builder.Property(x => x.Capacity)
+        builder.Property(x => x.HourlyRate)
             .HasPrecision(18, 2)
             .IsRequired();
     }
