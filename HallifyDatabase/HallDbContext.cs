@@ -1,4 +1,7 @@
 using HallifyDatabase.Models;
+using HallifyDatabase.Models.BookingServices;
+using HallifyDatabase.Models.Halls;
+using HallifyDatabase.Models.HallServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -13,4 +16,12 @@ public class HallDbContext(DbContextOptions<HallDbContext>  options): DbContext(
     public DbSet<HallService> HallServices { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<BookingService> BookingServices { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasDefaultSchema(PublicSchema);
+        base.OnModelCreating(modelBuilder);
+    
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(HallDbContext).Assembly);
+    }
 }
