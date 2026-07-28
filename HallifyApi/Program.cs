@@ -1,5 +1,10 @@
 using System.Text.Json.Serialization;
+using HallifyApi.Queries;
 using HallifyDatabase;
+using HallifyDatabase.Models;
+using HallifyDatabase.Models.Halls;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -37,16 +42,70 @@ builder.Services.AddScoped<HallDb>();
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+app.UseCors();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseRouting();
+app.MapGet("/api/halls/{id:guid}", async Task<Results<Ok<HallDto>, NotFound>>
+    ([FromRoute]Guid id, [FromServices]HallDb db, CancellationToken cancellationToken) =>
+{
+    var hall = await db.GetHallAsync(id, cancellationToken);
 
-app.UseCors();
+    if (hall is null) return TypedResults.NotFound();
+    
+    return TypedResults.Ok(hall);
+});
 
-app.UseHttpsRedirection();
+app.MapPost("/api/halls", async Task<Results<Created<Guid>, BadRequest>> 
+    ([FromBody]HallDto request, [FromServices]HallDb db, CancellationToken cancellationToken) =>
+{
+    var id = await db.AddHallAsync(request, cancellationToken);
+    
+    if (id is null) return TypedResults.BadRequest();
 
+    return TypedResults.Created($"/api/halls/{id.Value}", id.Value);
+});
+
+app.MapDelete("/api/halls/{id:guid}", async Task<Results<Ok, BadRequest>>
+    ([FromRoute]Guid id, [FromServices]HallDb db, CancellationToken cancellationToken) =>
+{
+    var result = await db.DeleteHallAsync(id, cancellationToken);
+
+    if (!result) return TypedResults.BadRequest();
+
+    return TypedResults.Ok();
+});
+
+app.MapGet("/api/halls", async Task<Ok<HallDto[]>>
+    ([AsParameters] HallSearchQuery query, [FromServices] HallDb db, CancellationToken cancellationToken) =>
+{
+    var halls = await db.GetAvailableHalls(query.StartAt, query.EndAt, query.Capacity, cancellationToken);
+
+    return TypedResults.Ok(halls);
+});
+
+app.MapPut("/api/halls", async Task<Results<Ok, BadRequest>>
+    ([FromBody] UpdateHallDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
+{
+    var result = await db.UpdateHall(request, cancellationToken);
+    
+    if (!result) return TypedResults.BadRequest();
+    
+    return TypedResults.Ok();
+});
+
+app.MapPost("/api/halls/book", async Task<Results<Ok<decimal>, BadRequest>>
+    ([FromBody] BookingDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
+{
+    var book = await db.BookHall(request, cancellationToken);
+
+    if (book is null) return TypedResults.BadRequest();
+
+    return TypedResults.Ok(book.Value);
+});
 
 await app.RunAsync();

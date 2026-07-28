@@ -15,7 +15,6 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
 
         var hall = await context.Halls
             .AsNoTracking()
-            .AsSingleQuery()
             .Where(h => !h.IsDeleted)
             .Where(h => h.Id == id)
             .Select(HallDto.FromHall)
@@ -27,6 +26,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
     public async Task<Guid?> AddHallAsync(HallDto hall, CancellationToken cancellationToken)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
+        
         var dbHallServices = hall.HallServices.Select(hs => new HallService
         {
             Name = hs.Name,
@@ -92,7 +92,6 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
 
         var halls = await context.Halls
             .AsNoTracking()
-            .AsSingleQuery()
             .Where(h => !h.IsDeleted)
             .Where(h => h.Capacity >= capacity)
             .Where(h => !h.Bookings
@@ -109,64 +108,75 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
         
-        var hall = await context.Halls
-            .AsSingleQuery()
-            .Where(h => !h.IsDeleted)
-            .Where(h => h.Id == booking.HallId)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (hall is null)
-            return null;
-
-        var distinctServices =  booking.BookingServices.Distinct().ToList();
-
-        var services = await context.HallServices
-            .AsSingleQuery()
-            .Where(hs => !hs.IsDeleted)
-            .Where(hs => hs.HallId == booking.HallId)
-            .Where(hs => distinctServices.Contains(hs.Id))
-            .ToDictionaryAsync(hs => hs.Id, cancellationToken);
-
-        if (distinctServices.Count != services.Count)
-            throw new ArgumentException("Деякі послуги не знайдені");
-
-        var bookingServices = distinctServices.Select(hs => new BookingService
-        {
-            HallServiceId = services[hs].Id,
-            PriceAtBooking = services[hs].Price,
-            HallService = services[hs],
-            IsDeleted = false,
-            
-        }).ToList();
-
-        var bookingEndAt = booking.StartAt + TimeSpan.FromMinutes(booking.Duration);
-        
-        var dbBooking = new Booking
-        {
-            Hall = hall,
-            HallId = hall.Id,
-            StartAt = booking.StartAt,
-            EndAt = bookingEndAt,
-            IsDeleted = false,
-            BookingServices = bookingServices,
-            TotalPrice = services.Values.Sum(hs => hs.Price) +
-                         HallRentalCalculator.CalculateRentalCost(hall.HourlyRate,
-                             booking.StartAt,
-                             bookingEndAt)
-        };
-
-        context.Bookings.Add(dbBooking);
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable, 
+            cancellationToken);
 
         try
         {
+            var hall = await context.Halls
+                .AsNoTracking()
+                .Where(h => !h.IsDeleted)
+                .Where(h => h.Id == booking.HallId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (hall is null)
+                return null;
+
+            var bookingEndAt = booking.StartAt + TimeSpan.FromMinutes(booking.Duration);
+
+            var isOccupied = await context.Bookings
+                .Where(b => !b.IsDeleted)
+                .Where(b => b.HallId == booking.HallId)
+                .Where(b => b.StartAt < bookingEndAt && b.EndAt > booking.StartAt)
+                .AnyAsync(cancellationToken);
+
+            if (isOccupied)
+                return null;
+
+            var distinctServices = booking.BookingServices.Distinct().ToList();
+
+            var services = await context.HallServices
+                .AsNoTracking()
+                .Where(hs => !hs.IsDeleted)
+                .Where(hs => hs.HallId == booking.HallId)
+                .Where(hs => distinctServices.Contains(hs.Id))
+                .ToDictionaryAsync(hs => hs.Id, cancellationToken);
+
+            if (distinctServices.Count != services.Count)
+                return null;
+
+            var bookingServices = distinctServices.Select(hsId => new BookingService
+            {
+                HallServiceId = services[hsId].Id,
+                PriceAtBooking = services[hsId].Price,
+                IsDeleted = false
+            }).ToList();
+
+            var dbBooking = new Booking
+            {
+                HallId = hall.Id,
+                StartAt = booking.StartAt,
+                EndAt = bookingEndAt,
+                IsDeleted = false,
+                BookingServices = bookingServices,
+                TotalPrice = services.Values.Sum(hs => hs.Price) +
+                             HallRentalCalculator.CalculateRentalCost(hall.HourlyRate,
+                                 booking.StartAt,
+                                 bookingEndAt)
+            };
+
+            context.Bookings.Add(dbBooking);
+
             await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return dbBooking.TotalPrice;
         }
         catch (DbUpdateException)
         {
             return null;
         }
-        
-        return dbBooking.TotalPrice;
     }
     
     public async Task<bool> UpdateHall(UpdateHallDto dto, CancellationToken cancellationToken)
@@ -184,10 +194,12 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
         hall.Capacity = dto.Capacity;
         hall.HourlyRate = dto.HourlyRate;
 
-        if (dto.DeleteHallServices.Count > 0)
+        var deleteSet = dto.DeleteHallServices.ToHashSet();
+
+        if (deleteSet.Count > 0)
         {
             var servicesToDelete = hall.HallServices
-                .Where(hs => dto.DeleteHallServices.Contains(hs.Id))
+                .Where(hs => deleteSet.Contains(hs.Id))
                 .ToList();
 
             foreach (var service in servicesToDelete)
@@ -196,8 +208,6 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
             }
         }
 
-        var deleteSet = dto.DeleteHallServices.ToHashSet();
-    
         foreach (var updateDto in dto.UpdateHallServices)
         {
             if (deleteSet.Contains(updateDto.Id)) 
@@ -216,14 +226,11 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
             hall.HallServices.Add(new HallService
             {
                 Id = Guid.NewGuid(),
-                HallId = hall.Id,
                 Name = createDto.Name,
                 Price = createDto.Price,
                 IsDeleted = false
             });
         }
-
-        await context.SaveChangesAsync(cancellationToken);
 
         try
         {
