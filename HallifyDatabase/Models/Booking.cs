@@ -34,7 +34,8 @@ file sealed class BookingConfigure: IEntityTypeConfiguration<Booking>
         
         builder.HasOne(bs => bs.Hall)
             .WithMany()
-            .HasForeignKey(bs => bs.HallId);
+            .HasForeignKey(bs => bs.HallId)
+            .OnDelete(DeleteBehavior.NoAction);
         
         builder.Property(x => x.StartAt).IsRequired();
         builder.Property(x => x.EndAt).IsRequired();

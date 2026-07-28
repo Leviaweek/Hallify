@@ -27,7 +27,8 @@ file sealed class BookingServiceConfigure: IEntityTypeConfiguration<BookingServi
 
         builder.HasOne(x => x.HallService)
             .WithMany()
-            .HasForeignKey(bs => bs.HallServiceId);
+            .HasForeignKey(bs => bs.HallServiceId)
+            .OnDelete(DeleteBehavior.NoAction);
         
         builder.HasOne(x => x.Booking)
             .WithMany(x => x.BookingServices)

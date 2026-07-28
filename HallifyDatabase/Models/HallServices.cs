@@ -10,10 +10,14 @@ namespace HallifyDatabase.Models;
 public class HallService
 {
     [Key] public Guid Id { get; set; }
-    
-    public required string Name { get; set; }
+
+    public Guid HallId { get; set; }
+    public Hall Hall { get; set; } = null!;
+
+    [MaxLength(50)]public required string Name { get; set; }
     
     public decimal Price { get; set; }
+    public bool IsDeleted { get; set; }
 }
 
 file sealed class HallServiceConfigure: IEntityTypeConfiguration<HallService>
@@ -29,5 +33,10 @@ file sealed class HallServiceConfigure: IEntityTypeConfiguration<HallService>
         builder.Property(hs  => hs.Price)
             .HasPrecision(18, 2)
             .IsRequired();
+        
+        builder.HasOne(hs => hs.Hall)
+            .WithMany(h => h.HallServices)
+            .HasForeignKey(hs => hs.HallId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }
