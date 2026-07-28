@@ -33,6 +33,8 @@ builder.Services.AddDbContextFactory<HallDbContext>(h =>
     h.UseNpgsql(dataSource);
 });
 
+builder.Services.AddScoped<HallDb>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -41,6 +43,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+app.UseCors();
 
 app.UseHttpsRedirection();
 
