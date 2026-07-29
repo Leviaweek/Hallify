@@ -104,7 +104,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
         return halls;
     }
 
-    public async Task<decimal?> BookHall(BookingDto booking, CancellationToken cancellationToken)
+    public async Task<decimal?> BookHall(Guid id, BookingDto booking, CancellationToken cancellationToken)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
         
@@ -117,7 +117,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
             var hall = await context.Halls
                 .AsNoTracking()
                 .Where(h => !h.IsDeleted)
-                .Where(h => h.Id == booking.HallId)
+                .Where(h => h.Id == id)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (hall is null)
@@ -127,7 +127,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
 
             var isOccupied = await context.Bookings
                 .Where(b => !b.IsDeleted)
-                .Where(b => b.HallId == booking.HallId)
+                .Where(b => b.HallId == id)
                 .Where(b => b.StartAt < bookingEndAt && b.EndAt > booking.StartAt)
                 .AnyAsync(cancellationToken);
 
@@ -139,7 +139,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
             var services = await context.HallServices
                 .AsNoTracking()
                 .Where(hs => !hs.IsDeleted)
-                .Where(hs => hs.HallId == booking.HallId)
+                .Where(hs => hs.HallId == id)
                 .Where(hs => distinctServices.Contains(hs.Id))
                 .ToDictionaryAsync(hs => hs.Id, cancellationToken);
 
@@ -178,14 +178,26 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
             return null;
         }
     }
+
+    public async Task<HallDto[]> GetAllHalls(CancellationToken cancellationToken)
+    {
+        await using var context = await factory.CreateDbContextAsync(cancellationToken);
+
+        var halls = await context.Halls
+            .Where(h => !h.IsDeleted)
+            .Select(HallDto.FromHall)
+            .ToArrayAsync(cancellationToken);
+
+        return halls;
+    }
     
-    public async Task<bool> UpdateHall(UpdateHallDto dto, CancellationToken cancellationToken)
+    public async Task<bool> UpdateHall(Guid id, UpdateHallDto dto, CancellationToken cancellationToken)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
 
         var hall = await context.Halls
             .Include(h => h.HallServices.Where(hs => !hs.IsDeleted))
-            .FirstOrDefaultAsync(h => h.Id == dto.Id && !h.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(h => h.Id == id && !h.IsDeleted, cancellationToken);
 
         if (hall is null)
             return false;
@@ -223,9 +235,10 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
 
         foreach (var createDto in dto.CreateHallServices)
         {
-            hall.HallServices.Add(new HallService
+            context.HallServices.Add(new HallService
             {
                 Id = Guid.NewGuid(),
+                HallId = hall.Id,
                 Name = createDto.Name,
                 Price = createDto.Price,
                 IsDeleted = false

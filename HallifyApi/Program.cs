@@ -50,6 +50,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.MapGet("/api/halls", async Task<Ok<HallDto[]>>
+    ([FromServices]HallDb db, CancellationToken cancellationToken) =>
+{
+    var halls = await db.GetAllHalls(cancellationToken);
+    return TypedResults.Ok(halls);
+});
+
 app.MapGet("/api/halls/{id:guid}", async Task<Results<Ok<HallDto>, NotFound>>
     ([FromRoute]Guid id, [FromServices]HallDb db, CancellationToken cancellationToken) =>
 {
@@ -80,7 +87,7 @@ app.MapDelete("/api/halls/{id:guid}", async Task<Results<Ok, BadRequest>>
     return TypedResults.Ok();
 });
 
-app.MapGet("/api/halls", async Task<Ok<HallDto[]>>
+app.MapGet("/api/halls/available", async Task<Ok<HallDto[]>>
     ([AsParameters] HallSearchQuery query, [FromServices] HallDb db, CancellationToken cancellationToken) =>
 {
     var halls = await db.GetAvailableHalls(query.StartAt, query.EndAt, query.Capacity, cancellationToken);
@@ -88,20 +95,25 @@ app.MapGet("/api/halls", async Task<Ok<HallDto[]>>
     return TypedResults.Ok(halls);
 });
 
-app.MapPut("/api/halls", async Task<Results<Ok, BadRequest>>
-    ([FromBody] UpdateHallDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
-{
-    var result = await db.UpdateHall(request, cancellationToken);
-    
-    if (!result) return TypedResults.BadRequest();
-    
-    return TypedResults.Ok();
-});
+app.MapPut("/api/halls/{id:guid}",
+    async Task<Results<Ok, BadRequest>> ([FromRoute] Guid id,
+        [FromBody] UpdateHallDto request,
+        [FromServices] HallDb db,
+        CancellationToken cancellationToken) =>
+    {
+        var result = await db.UpdateHall(id, request,
+            cancellationToken);
 
-app.MapPost("/api/halls/book", async Task<Results<Ok<decimal>, BadRequest>>
-    ([FromBody] BookingDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
+        if (!result)
+            return TypedResults.BadRequest();
+
+        return TypedResults.Ok();
+    });
+
+app.MapPost("/api/halls/{id:guid}/bookings", async Task<Results<Ok<decimal>, BadRequest>>
+    ([FromRoute]Guid id, [FromBody] BookingDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
 {
-    var book = await db.BookHall(request, cancellationToken);
+    var book = await db.BookHall(id, request, cancellationToken);
 
     if (book is null) return TypedResults.BadRequest();
 
