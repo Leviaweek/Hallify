@@ -1,3 +1,4 @@
+using System.Data;
 using HallifyDatabase.Models;
 using HallifyDatabase.Models.BookingServices;
 using HallifyDatabase.Models.Halls;
@@ -26,12 +27,12 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
     public async Task<Guid?> AddHallAsync(HallDto hall, CancellationToken cancellationToken)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
-        
+
         var dbHallServices = hall.HallServices.Select(hs => new HallService
         {
             Name = hs.Name,
             IsDeleted = false,
-            Price = hs.Price,
+            Price = hs.Price
         }).ToList();
 
         var dbHall = new Hall
@@ -107,9 +108,9 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
     public async Task<decimal?> BookHall(Guid id, BookingDto booking, CancellationToken cancellationToken)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
-        
+
         await using var transaction = await context.Database.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable, 
+            IsolationLevel.Serializable,
             cancellationToken);
 
         try
@@ -190,7 +191,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
 
         return halls;
     }
-    
+
     public async Task<bool> UpdateHall(Guid id, UpdateHallDto dto, CancellationToken cancellationToken)
     {
         await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -214,27 +215,23 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
                 .Where(hs => deleteSet.Contains(hs.Id))
                 .ToList();
 
-            foreach (var service in servicesToDelete)
-            {
-                service.IsDeleted = true;
-            }
+            foreach (var service in servicesToDelete) service.IsDeleted = true;
         }
 
         foreach (var updateDto in dto.UpdateHallServices)
         {
-            if (deleteSet.Contains(updateDto.Id)) 
+            if (deleteSet.Contains(updateDto.Id))
                 continue;
 
             var existingService = hall.HallServices.FirstOrDefault(hs => hs.Id == updateDto.Id);
-            
+
             if (existingService is null) continue;
-            
+
             existingService.Name = updateDto.Name;
             existingService.Price = updateDto.Price;
         }
 
         foreach (var createDto in dto.CreateHallServices)
-        {
             context.HallServices.Add(new HallService
             {
                 Id = Guid.NewGuid(),
@@ -243,7 +240,6 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
                 Price = createDto.Price,
                 IsDeleted = false
             });
-        }
 
         try
         {
@@ -253,7 +249,7 @@ public sealed class HallDb(IDbContextFactory<HallDbContext> factory)
         {
             return false;
         }
-        
+
         return true;
     }
 }

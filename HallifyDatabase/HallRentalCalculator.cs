@@ -22,10 +22,10 @@ public static class HallRentalCalculator
 
             var rate = hour switch
             {
-                >= 3 and < 6   => 0.9m,   // Ранок UTC (06:00 - 09:00 Kyiv)
-                >= 9 and < 11  => 1.15m,  // Пік UTC  (12:00 - 14:00 Kyiv)
-                >= 6 and < 15  => 1.0m,   // День UTC  (09:00 - 18:00 Kyiv)
-                >= 15 and < 20 => 0.8m,   // Вечір UTC (18:00 - 23:00 Kyiv)
+                >= 3 and < 6 => 0.9m, // Ранок UTC (06:00 - 09:00 Kyiv)
+                >= 9 and < 11 => 1.15m, // Пік UTC  (12:00 - 14:00 Kyiv)
+                >= 6 and < 15 => 1.0m, // День UTC  (09:00 - 18:00 Kyiv)
+                >= 15 and < 20 => 0.8m, // Вечір UTC (18:00 - 23:00 Kyiv)
                 _ => throw new ArgumentOutOfRangeException(nameof(start),
                     "Заклад працює лише з 06:00 до 23:00 по Києву")
             };

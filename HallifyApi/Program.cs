@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using HallifyApi.Queries;
+using HallifyApi.Report;
 using HallifyDatabase;
 using HallifyDatabase.Models;
 using HallifyDatabase.Models.Halls;
@@ -13,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddScoped<ReportsDb>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -21,13 +23,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(
-        corsPolicyBuilder =>
-        {
-            corsPolicyBuilder.AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-        });
+    options.AddDefaultPolicy(corsPolicyBuilder =>
+    {
+        corsPolicyBuilder.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
 });
 
 builder.Services.AddDbContextFactory<HallDbContext>(h =>
@@ -45,40 +46,37 @@ var app = builder.Build();
 //app.UseHttpsRedirection();
 app.UseCors();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.MapGet("/api/halls", async Task<Ok<HallDto[]>>
-    ([FromServices]HallDb db, CancellationToken cancellationToken) =>
+    ([FromServices] HallDb db, CancellationToken cancellationToken) =>
 {
     var halls = await db.GetAllHalls(cancellationToken);
     return TypedResults.Ok(halls);
 });
 
 app.MapGet("/api/halls/{id:guid}", async Task<Results<Ok<HallDto>, NotFound>>
-    ([FromRoute]Guid id, [FromServices]HallDb db, CancellationToken cancellationToken) =>
+    ([FromRoute] Guid id, [FromServices] HallDb db, CancellationToken cancellationToken) =>
 {
     var hall = await db.GetHallAsync(id, cancellationToken);
 
     if (hall is null) return TypedResults.NotFound();
-    
+
     return TypedResults.Ok(hall);
 });
 
-app.MapPost("/api/halls", async Task<Results<Created<Guid>, BadRequest>> 
-    ([FromBody]HallDto request, [FromServices]HallDb db, CancellationToken cancellationToken) =>
+app.MapPost("/api/halls", async Task<Results<Created<Guid>, BadRequest>>
+    ([FromBody] HallDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
 {
     var id = await db.AddHallAsync(request, cancellationToken);
-    
+
     if (id is null) return TypedResults.BadRequest();
 
     return TypedResults.Created($"/api/halls/{id.Value}", id.Value);
 });
 
 app.MapDelete("/api/halls/{id:guid}", async Task<Results<Ok, BadRequest>>
-    ([FromRoute]Guid id, [FromServices]HallDb db, CancellationToken cancellationToken) =>
+    ([FromRoute] Guid id, [FromServices] HallDb db, CancellationToken cancellationToken) =>
 {
     var result = await db.DeleteHallAsync(id, cancellationToken);
 
@@ -111,7 +109,8 @@ app.MapPut("/api/halls/{id:guid}",
     });
 
 app.MapPost("/api/halls/{id:guid}/bookings", async Task<Results<Ok<decimal>, BadRequest>>
-    ([FromRoute]Guid id, [FromBody] BookingDto request, [FromServices] HallDb db, CancellationToken cancellationToken) =>
+([FromRoute] Guid id, [FromBody] BookingDto request, [FromServices] HallDb db,
+    CancellationToken cancellationToken) =>
 {
     var book = await db.BookHall(id, request, cancellationToken);
 
@@ -119,5 +118,7 @@ app.MapPost("/api/halls/{id:guid}/bookings", async Task<Results<Ok<decimal>, Bad
 
     return TypedResults.Ok(book.Value);
 });
+
+app.MapReports();
 
 await app.RunAsync();

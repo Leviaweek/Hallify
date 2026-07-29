@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using HallifyDatabase.Models.BookingServices;
 
 namespace HallifyDatabase.Models;
 

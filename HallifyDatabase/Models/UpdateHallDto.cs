@@ -10,4 +10,4 @@ public sealed record UpdateHallDto(
     [property: JsonPropertyName("hourlyRate")] decimal HourlyRate,
     [property: JsonPropertyName("createHallServices")] List<CreateHallServiceDto> CreateHallServices,
     [property: JsonPropertyName("updateHallServices")] List<UpdateHallServiceDto> UpdateHallServices,
-    [property: JsonPropertyName("deleteHallServices")] List<Guid> DeleteHallServices);
+    [property: JsonPropertyName("deleteHallServices")] List<Guid> DeleteHallServices);   

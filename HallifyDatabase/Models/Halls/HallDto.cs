@@ -11,7 +11,6 @@ public sealed record HallDto(Guid Id, string Name, int Capacity, decimal HourlyR
             hall.Name,
             hall.Capacity,
             hall.HourlyRate,
-            hall.HallServices.AsQueryable().
-                Where(hs => !hs.IsDeleted)
+            hall.HallServices.AsQueryable().Where(hs => !hs.IsDeleted)
                 .Select(HallServiceDto.FromHallService).ToList());
 }
