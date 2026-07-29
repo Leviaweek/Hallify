@@ -13,9 +13,13 @@ services:
   
   hallifyapi:
     image: hallifyapi
+    ports:
+      - "8080:8080"
     build:
       context: .
       dockerfile: HallifyApi/Dockerfile
+    environment:
+      'ConnectionStrings__DefaultConnection': 'Host=db;Database=${DATABASE};Username=${USERNAME};Password=${PASSWORD}'
 
 volumes:
   pgdata:
