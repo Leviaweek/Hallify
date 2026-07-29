@@ -42,7 +42,7 @@ builder.Services.AddScoped<HallDb>();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseCors();
 
 if (app.Environment.IsDevelopment())

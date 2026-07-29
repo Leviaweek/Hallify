@@ -10,6 +10,12 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
+  
+  hallifyapi:
+    image: hallifyapi
+    build:
+      context: .
+      dockerfile: HallifyApi/Dockerfile
 
 volumes:
   pgdata:
